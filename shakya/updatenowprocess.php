@@ -1,0 +1,184 @@
+<?php
+session_start();
+if (isset($_SESSION["u"])) {
+
+    $email = $_SESSION["u"]["email"];
+    include "connection.php";
+
+    if (isset($_POST["fl"], $_POST["sr"], $_POST["add"], $_POST["pro"], $_POST["dis"], $_POST["div"], $_POST["nic"], $_POST["dob"], $_POST["bp"], $_POST["j"], $_POST["m"], $_POST["g"], $_POST["ty"])) {
+
+        $flname = $_POST["fl"];
+        $srname = $_POST["sr"];
+        $address = $_POST["add"];
+        $province = $_POST["pro"];
+        $district = $_POST["dis"];
+        $division = $_POST["div"];
+        $nic = $_POST["nic"];
+        $dob = $_POST["dob"];
+        $bp = $_POST["bp"];
+        $job = $_POST["j"];
+        $mobile = $_POST["m"];
+        $gender = $_POST["g"];
+        $type = $_POST["ty"];
+        $mid = $_POST["mid"];
+        
+        
+        // Function to convert date to standard format if needed
+        function convertToStandardDateFormat($dateString)
+        {
+            // Attempt to create a DateTime object from the input date string
+            $date = DateTime::createFromFormat('Y-m-d', $dateString);
+
+            // Check if the input date string matches the standard format
+            if (!$date) {
+                // If not in standard format, attempt to parse using other common formats
+                $formats = array('m/d/Y', 'Y-m-d', 'd.m.Y' , 'Y.m.d' , 'd-m-Y' , 'd/m/Y' , 'Y/m/d');
+                foreach ($formats as $format) {
+                    $date = DateTime::createFromFormat($format, $dateString);
+                    if ($date) {
+                        return $date->format('Y-m-d');
+                    }
+                }
+                // If unable to parse, return an error message or handle it as needed
+                return "Invalid date format";
+            }
+
+            // If the date is already in standard format, return it as is
+            return $dateString;
+        }
+
+        // Check if the date is provided via POST and process it
+        if (isset($_POST["dob"])) {
+            // Get the date of birth from POST
+            $dob = $_POST["dob"];
+
+            // Convert the date to standard format
+            $standardDob = convertToStandardDateFormat($dob);
+
+            // Use $standardDob for further processing
+          
+        }
+
+
+        if (empty($flname)) {
+            echo ("Please enter Full name");
+        } else if (empty($srname)) {
+            echo ("Please enter Surname");
+        } else if (empty($address)) {
+            echo ("Please enter address");
+        } else if (empty($province)) {
+            echo ("Please select Province");
+        } else if (empty($district)) {
+            echo ("Please select District");
+        } else if (empty($division)) {
+            echo ("Please enter Division");
+        } else if (empty($nic)) {
+            echo ("Please enter NIC");
+        } else if (empty($dob)) {
+            echo ("Please enter Date of birth");
+        } else if (empty($bp)) {
+            echo ("Please enter Birth Place");
+        } else if (empty($job)) {
+            echo ("Please enter Job/Profession");
+        } else if (empty($mobile)) {
+            echo ("Please enter Mobile Number");
+        } else if (strlen($mobile) != 10) {
+            echo ("Mobile Number Must Contain 10 characters.");
+        } else if (!preg_match("/07[0,1,2,4,5,6,7,8]{1}[0-9]{7}/", $mobile)) {
+            echo ("Invalid Mobile Number.");
+        } else if (empty($gender)) {
+            echo ("Please select Gender");
+        } else if ($type == "0") {
+            echo ("Please select Membershp type");
+        } else {
+
+
+
+
+            $d = new DateTime();
+            $tz = new DateTimeZone("Asia/Colombo");
+            $d->setTimezone($tz);
+            $date = $d->format("Y-m-d");
+            // Modify the initial date by adding one year
+            $d->modify('+1 year');
+            $expier_date = $d->format("Y-m-d"); // Get the modified date
+
+
+
+            $m_id = uniqid();
+
+
+            $updateResult = Database::iud("UPDATE `members` SET 
+            `full_name` = '" . $flname . "', 
+            `surname` = '" . $srname . "', 
+            `address` = '" . $address . "', 
+            `division` = '" . $division . "', 
+            `nic` = '" . $nic . "', 
+            `birthday` = '" . $standardDob . "', 
+            `birth_place` = '" . $bp . "', 
+            `job` = '" . $job . "', 
+            `mobile` = '" . $mobile . "', 
+            `type` = '" . $type . "', 
+            `district_id` = '" . $district . "', 
+            `gender_id` = '" . $gender . "', 
+            `join_date` = '" . $date . "', 
+            `expier_date` = '" . $expier_date . "', 
+            `status` = '1' 
+        WHERE `member_id` = '" . $mid . "'");
+
+
+
+
+
+
+
+            if (isset($_FILES["i"])) {
+                $image = $_FILES["i"];
+                $image_extension = $image["type"];
+                $allowed_image_extensions = array("image/jpeg", "image/png", "image/svg+xml");
+
+                if (in_array($image_extension, $allowed_image_extensions)) {
+                    $new_img_extension = '';
+                    // Handle file extension
+                    if ($image_extension == "image/jpeg") {
+                        $new_img_extension = ".jpeg";
+                    } else if ($image_extension == "image/png") {
+                        $new_img_extension = ".png";
+                    } else if ($image_extension == "image/svg+xml") {
+                        $new_img_extension = ".svg";
+                    }
+
+                    $file_name = "resources/receipt/" . $email .  "_" . uniqid() . $new_img_extension;
+                    // Move uploaded file
+                    if (move_uploaded_file($image["tmp_name"], $file_name)) {
+                        // Insert receipt data into the database
+
+
+                        $re_rs = Database::search("SELECT * FROM `members_has_receipt` WHERE `members_user_email` = '".$_SESSION["u"]["email"]."'");
+                        $re_data = $re_rs->fetch_assoc();
+
+                       
+
+
+
+                        Database::iud("UPDATE `receipt` SET `img_path` = '" . $file_name . "' WHERE `receipt_id` = '" . $re_data["receipt_receipt_id"] . "'");
+
+                        
+
+
+                        echo "success";
+                    } else {
+                        echo "Failed to move uploaded file.";
+                    }
+                } else {
+                    echo "Invalid file type.";
+                }
+            } else {
+                echo "Please upload receipt image.";
+            }
+        }
+    }
+} else {
+
+    echo ("please Login First");
+}
